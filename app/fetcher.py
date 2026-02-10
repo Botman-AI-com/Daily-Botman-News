@@ -16,16 +16,16 @@ def fetch_recent_posts() -> list[dict]:
     Returns a list of tweet dicts with id, text, created_at, and public_metrics.
     """
     now = datetime.now(timezone.utc)
-    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    start_time = now - timedelta(minutes=settings.max_age_minutes)
     end_time = now - timedelta(minutes=settings.min_age_minutes)
 
-    if end_time <= start_of_day:
-        logger.info("Too early in the day — no posts qualify yet.")
+    if end_time <= start_time:
+        logger.info("No valid time window — min_age >= max_age.")
         return []
 
     params = {
         "query": settings.x_search_query,
-        "start_time": start_of_day.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "end_time": end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "max_results": settings.max_results,
         "tweet.fields": "created_at,public_metrics,author_id",

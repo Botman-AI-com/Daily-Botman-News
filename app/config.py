@@ -26,6 +26,7 @@ class Settings:
     max_results: int = int(os.environ.get("MAX_RESULTS", "30"))
     top_n: int = int(os.environ.get("TOP_N", "1"))
     min_age_minutes: int = int(os.environ.get("MIN_AGE_MINUTES", "30"))
+    max_age_minutes: int = int(os.environ.get("MAX_AGE_MINUTES", "120"))
     min_engagement: int = int(os.environ.get("MIN_ENGAGEMENT", "3"))
     discord_bot_token: str = os.environ.get("DISCORD_BOT_TOKEN", "")
     discord_channel_id: str = os.environ.get("DISCORD_CHANNEL_ID", "")
