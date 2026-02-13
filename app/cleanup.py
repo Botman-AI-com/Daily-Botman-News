@@ -30,13 +30,41 @@ def midnight_cleanup() -> None:
     for tid in thread_ids:
         discord.delete_thread(tid)
 
-    logger.info("Discord cleanup: deleted %d thread(s) for %s.", len(thread_ids), yesterday)
+    logger.info(
+        "Discord cleanup: deleted %d thread(s) for %s.",
+        len(thread_ids), yesterday,
+    )
+
+    # 1b. Delete GitHub Discord threads from yesterday
+    gh_thread_ids = []
+    cursor = 0
+    while True:
+        cursor, keys = r.scan(
+            cursor, match=f"gh_post:{yesterday}:*", count=500,
+        )
+        for key in keys:
+            tid = r.hget(key, "discord_thread_id")
+            if tid:
+                gh_thread_ids.append(tid)
+        if cursor == 0:
+            break
+
+    for tid in gh_thread_ids:
+        discord.delete_thread(tid)
+
+    logger.info(
+        "GH Discord cleanup: deleted %d thread(s) for %s.",
+        len(gh_thread_ids), yesterday,
+    )
 
     # 2. Delete Redis keys
     patterns = [
         f"post:{yesterday}:*",
         f"known:{yesterday}",
         f"published:{yesterday}",
+        f"gh_post:{yesterday}:*",
+        f"gh_known:{yesterday}",
+        f"gh_published:{yesterday}",
     ]
 
     deleted = 0

@@ -32,6 +32,17 @@ class Settings:
     schedule_end_hour: int = int(os.environ.get("SCHEDULE_END_HOUR", "20"))
     discord_bot_token: str = os.environ.get("DISCORD_BOT_TOKEN", "")
     discord_channel_id: str = os.environ.get("DISCORD_CHANNEL_ID", "")
+    github_token: str = os.environ.get("GITHUB_TOKEN", "")
+    github_repos: str = os.environ.get(
+        "GITHUB_REPOS", "anthropics/claude-code,openai/codex"
+    )
+    github_check_interval_minutes: int = int(
+        os.environ.get("GITHUB_CHECK_INTERVAL_MINUTES", "30")
+    )
+    github_top_n: int = int(os.environ.get("GITHUB_TOP_N", "3"))
+    github_discord_channel_id: str = os.environ.get(
+        "GITHUB_DISCORD_CHANNEL_ID", ""
+    )
 
 
 settings = Settings()
