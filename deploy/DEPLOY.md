@@ -1,75 +1,83 @@
 # Cloud Run Deployment
 
-## Prerequisites
+## Current Infrastructure
 
-- [gcloud CLI](https://cloud.google.com/sdk/docs/install) installed and authenticated
-- GCP project with billing enabled
-- [Upstash](https://console.upstash.com) account (free tier)
+| Resource | Value |
+|----------|-------|
+| GCP Project | `botman-barbara` |
+| Region | `southamerica-west1` (Santiago) |
+| VPC | `barbara-vpc` |
+| VPC Connector | `barbara-connector` |
+| Redis | Memorystore `botman-redis` at `10.249.236.123:6379` |
+| Artifact Registry | `botman-repo` |
+| Cloud Scheduler | `southamerica-east1` (Sao Paulo) |
+| Service Account | `botman-scheduler@botman-barbara.iam.gserviceaccount.com` |
 
-## 1. Upstash Redis
+## Cloud Run Jobs
 
-1. Create a free Redis database at [console.upstash.com](https://console.upstash.com)
-2. Copy the `rediss://` connection string (double-s = TLS, works with redis-py out of the box)
+| Job | Command | Schedule (ART) |
+|-----|---------|---------------|
+| `botman-pipeline` | X/Twitter pipeline | `*/30 9-19 * * *` |
+| `botman-github` | GitHub monitor | `*/30 9-19 * * *` |
+| `botman-cleanup` | Midnight cleanup | `0 0 * * *` |
 
-## 2. Set Environment
-
-```bash
-export GCP_PROJECT_ID="your-project-id"
-export GCP_REGION="us-central1"  # optional, defaults to us-central1
-```
-
-## 3. Create Secrets
-
-Run `deploy/setup.sh` or manually create each secret:
-
-```bash
-echo -n 'your-x-bearer-token'     | gcloud secrets versions add X_BEARER_TOKEN --data-file=-
-echo -n 'your-gemini-api-key'     | gcloud secrets versions add GEMINI_API_KEY --data-file=-
-echo -n 'your-discord-bot-token'  | gcloud secrets versions add DISCORD_BOT_TOKEN --data-file=-
-echo -n '123456789'               | gcloud secrets versions add DISCORD_CHANNEL_ID --data-file=-
-echo -n 'rediss://...@...:6379'   | gcloud secrets versions add REDIS_URL --data-file=-
-echo -n 'ghp_...'                 | gcloud secrets versions add GITHUB_TOKEN --data-file=-
-```
-
-## 4. Deploy
-
-```bash
-chmod +x deploy/setup.sh
-./deploy/setup.sh
-```
-
-This enables APIs, builds the image, creates 3 Cloud Run Jobs, and sets up Cloud Scheduler triggers.
-
-## 5. Verify
+## Verify
 
 ```bash
 # Run each job manually
-gcloud run jobs execute botman-pipeline --region=$GCP_REGION --wait
-gcloud run jobs execute botman-github   --region=$GCP_REGION --wait
-gcloud run jobs execute botman-cleanup  --region=$GCP_REGION --wait
+gcloud run jobs execute botman-pipeline --region=southamerica-west1 --wait
+gcloud run jobs execute botman-github   --region=southamerica-west1 --wait
+gcloud run jobs execute botman-cleanup  --region=southamerica-west1 --wait
 
 # Check logs
-gcloud run jobs executions list --job=botman-pipeline --region=$GCP_REGION
+gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="botman-github"' \
+  --limit=20 --format="value(textPayload)" --project=botman-barbara --freshness=30m
 ```
 
-## 6. Update (after code changes)
+## Update (after code changes)
 
 ```bash
-IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/botman/botman:latest"
-gcloud builds submit --tag "${IMAGE}" .
-gcloud run jobs update botman-pipeline --image="${IMAGE}" --region=$GCP_REGION
-gcloud run jobs update botman-github   --image="${IMAGE}" --region=$GCP_REGION
-gcloud run jobs update botman-cleanup  --image="${IMAGE}" --region=$GCP_REGION
+IMAGE="southamerica-west1-docker.pkg.dev/botman-barbara/botman-repo/botman:latest"
+gcloud builds submit --tag "${IMAGE}" --project=botman-barbara .
+gcloud run jobs update botman-pipeline --image="${IMAGE}" --region=southamerica-west1
+gcloud run jobs update botman-github   --image="${IMAGE}" --region=southamerica-west1
+gcloud run jobs update botman-cleanup  --image="${IMAGE}" --region=southamerica-west1
 ```
 
-## 7. Cost
+## Secrets (Secret Manager)
+
+```bash
+# Update a secret value
+echo -n 'NEW_VALUE' | gcloud secrets versions add SECRET_NAME --data-file=-
+
+# Current secrets: X_BEARER_TOKEN, GEMINI_API_KEY, DISCORD_BOT_TOKEN,
+#                  DISCORD_CHANNEL_ID, REDIS_URL, GITHUB_TOKEN
+```
+
+## Architecture
+
+```
+Cloud Scheduler (southamerica-east1)
+  |-- */30 9-19 * * * ART --> Cloud Run Job: botman-pipeline
+  |-- */30 9-19 * * * ART --> Cloud Run Job: botman-github
+  |-- 0 0 * * * ART -------> Cloud Run Job: botman-cleanup
+
+Cloud Run Jobs (southamerica-west1)
+  --> VPC Connector (barbara-connector)
+    --> Memorystore Redis (10.249.236.123:6379)
+  --> Discord API (external)
+  --> GitHub API (external)
+  --> Gemini API (external)
+  --> X API (external)
+```
+
+## Cost
 
 | Service | Free Tier | Usage |
 |---------|-----------|-------|
 | Cloud Run Jobs | 2M requests/mo | ~1,400 runs/mo |
 | Cloud Scheduler | 3 free jobs | 3 jobs |
-| Upstash Redis | 10K commands/day | ~500 commands/day |
+| Memorystore Redis | N/A | ~$36/mo (1GB basic) |
+| VPC Connector | N/A | ~$7/mo (e2-micro) |
 | Artifact Registry | 500MB | ~100MB |
 | Secret Manager | 6 active versions | 6 secrets |
-
-**Estimated cost: $0.00/month** within free tier limits.
