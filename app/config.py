@@ -28,6 +28,8 @@ class Settings:
     min_age_minutes: int = int(os.environ.get("MIN_AGE_MINUTES", "30"))
     max_age_minutes: int = int(os.environ.get("MAX_AGE_MINUTES", "120"))
     min_engagement: int = int(os.environ.get("MIN_ENGAGEMENT", "3"))
+    schedule_start_hour: int = int(os.environ.get("SCHEDULE_START_HOUR", "9"))
+    schedule_end_hour: int = int(os.environ.get("SCHEDULE_END_HOUR", "20"))
     discord_bot_token: str = os.environ.get("DISCORD_BOT_TOKEN", "")
     discord_channel_id: str = os.environ.get("DISCORD_CHANNEL_ID", "")
 
