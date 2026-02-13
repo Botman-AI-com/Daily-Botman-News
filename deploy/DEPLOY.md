@@ -29,7 +29,6 @@ echo -n 'your-discord-bot-token'  | gcloud secrets versions add DISCORD_BOT_TOKE
 echo -n '123456789'               | gcloud secrets versions add DISCORD_CHANNEL_ID --data-file=-
 echo -n 'rediss://...@...:6379'   | gcloud secrets versions add REDIS_URL --data-file=-
 echo -n 'ghp_...'                 | gcloud secrets versions add GITHUB_TOKEN --data-file=-
-echo -n '123456789'               | gcloud secrets versions add GITHUB_DISCORD_CHANNEL_ID --data-file=-
 ```
 
 ## 4. Deploy
@@ -71,6 +70,6 @@ gcloud run jobs update botman-cleanup  --image="${IMAGE}" --region=$GCP_REGION
 | Cloud Scheduler | 3 free jobs | 3 jobs |
 | Upstash Redis | 10K commands/day | ~500 commands/day |
 | Artifact Registry | 500MB | ~100MB |
-| Secret Manager | 6 active versions | 7 secrets |
+| Secret Manager | 6 active versions | 6 secrets |
 
 **Estimated cost: $0.00/month** within free tier limits.

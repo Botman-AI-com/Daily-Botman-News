@@ -21,7 +21,7 @@ def _tweet_link(tweet_id: str) -> str:
 
 
 def post_news(post: dict) -> str | None:
-    """Create a forum thread for the news item. Returns the thread ID or None."""
+    """Create a forum thread for a news item."""
     if not settings.discord_bot_token or not settings.discord_channel_id:
         return None
 
@@ -64,54 +64,103 @@ def post_news(post: dict) -> str | None:
         return None
 
 
+TAG_COLORS = {
+    "Release": "\U0001f534",
+    "ClaudeCode": "\U0001f535",
+    "Codex": "\U0001f7e2",
+    "Changelog": "\U0001f7e1",
+    "Feature": "\U0001f7e3",
+    "BugFix": "\U0001f7e0",
+    "Breaking": "\U0001f534",
+    "MCP": "\U0001f535",
+    "Performance": "\u26aa",
+    "Security": "\U0001f534",
+    "CLI": "\U0001f7e2",
+    "Agent": "\U0001f7e3",
+    "Model": "\U0001f7e1",
+}
+
+TYPE_EMOJI = {
+    "release": "\U0001f680",
+    "pr": "\U0001f500",
+    "issue": "\U0001f41b",
+}
+
+PRIORITY_BADGE = {
+    "high": "\U0001f525 High",
+    "medium": "\u26a1 Medium",
+}
+
+
+def _format_tags(tags: list[str]) -> str:
+    parts = []
+    for tag in tags:
+        dot = TAG_COLORS.get(tag, "\u26aa")
+        parts.append(f"{dot} `{tag}`")
+    return "  ".join(parts)
+
+
 def post_github_news(post: dict) -> str | None:
-    """Create a forum thread for a GitHub item."""
-    channel = (
-        settings.github_discord_channel_id
-        or settings.discord_channel_id
-    )
-    if not settings.discord_bot_token or not channel:
+    """Create a rich forum thread for a GitHub update."""
+    if not settings.discord_bot_token or not settings.discord_channel_id:
         return None
 
-    type_emoji = {
-        "release": "\U0001f680",
-        "pr": "\U0001f500",
-        "issue": "\U0001f41b",
-    }
     item_type = post.get("type", "issue")
-    emoji = type_emoji.get(item_type, "\U0001f4e6")
+    emoji = TYPE_EMOJI.get(item_type, "\U0001f4e6")
     repo = post.get("repo", "")
     raw_title = post.get("short_title", "News")
-    thread_name = (
-        f"[{item_type.upper()}] {repo}: {raw_title}"[:100]
-    )
-
     priority = post.get("priority", "medium")
     tldr = post.get("tldr", "")
     reason = post.get("reason", "")
-    tags = ", ".join(post.get("tags", []))
+    tags = post.get("tags", [])
+    tips = post.get("tips", "")
     url = post.get("url", "")
+    badge = PRIORITY_BADGE.get(priority, priority)
 
-    lines = [f"{emoji} **{raw_title}**", ""]
-    lines.append(f"Type: `{item_type}` | Priority: **{priority}**")
-    lines.append("")
+    thread_name = (
+        f"{emoji} {raw_title}"[:100]
+    )
+
+    lines = [
+        f"{emoji}  **{raw_title}**",
+        f"\U0001f4e6 `{repo}` \u2022 "
+        f"`{item_type.upper()}` \u2022 {badge}",
+        "\u2500" * 30,
+    ]
+
     if tldr:
+        lines.append("")
+        lines.append("\U0001f4cb  **What Changed**")
         lines.append(tldr)
+
+    if tips:
         lines.append("")
+        lines.append("\U0001f4a1  **Tips & How to Use**")
+        for tip in tips.split("|"):
+            tip = tip.strip()
+            if tip:
+                lines.append(f"\u2022 {tip}")
+
     if reason:
-        lines.append(f"> {reason}")
         lines.append("")
+        lines.append(f"> \U0001f4ac {reason}")
+
     if tags:
-        lines.append(f"Tags: `{tags}`")
+        lines.append("")
+        lines.append(_format_tags(tags))
+
     if url:
         lines.append("")
-        lines.append(url)
+        lines.append(f"\U0001f517 {url}")
 
     content = "\n".join(lines)
 
     try:
         resp = httpx.post(
-            f"{DISCORD_API}/channels/{channel}/threads",
+            (
+                f"{DISCORD_API}/channels"
+                f"/{settings.discord_channel_id}/threads"
+            ),
             headers=_headers(),
             json={
                 "name": thread_name,
@@ -147,4 +196,7 @@ def delete_thread(thread_id: str) -> None:
         resp.raise_for_status()
         logger.info("Deleted Discord thread: %s", thread_id)
     except Exception:
-        logger.error("Failed to delete Discord thread %s.", thread_id, exc_info=True)
+        logger.error(
+            "Failed to delete Discord thread %s.",
+            thread_id, exc_info=True,
+        )

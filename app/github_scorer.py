@@ -22,6 +22,11 @@ MCP integrations → high.
 - FILTER OUT: dependabot PRs, typo fixes, doc-only changes, \
 stale issues, CI-only changes.
 
+## TAGS
+Assign one or more tags from this list (use exactly these names):
+Release, ClaudeCode, Codex, Changelog, Feature, BugFix, \
+Breaking, MCP, Performance, Security, CLI, Agent, Model
+
 ## OUTPUT FORMAT
 Return ONLY a valid JSON array of items that pass. \
 If none pass, return [].
@@ -30,10 +35,13 @@ Each element:
   "index": <number>,
   "pass": true,
   "priority": "high" | "medium",
-  "tags": ["release", "feature", ...],
+  "tags": ["Release", "ClaudeCode", ...],
   "title": "Short headline, max 100 chars",
   "reason": "One sentence why this matters.",
-  "tldr": "2-3 sentence summary."
+  "tldr": "2-3 sentence summary of what changed.",
+  "tips": "1-2 practical tips on how the team could use this. \
+Write as bullet points separated by | (pipe). \
+Example: Update with claude update|Try the new /team command"
 }
 
 Be aggressive filtering. Ask: "Would this change how we \
@@ -76,6 +84,7 @@ def score_github_items(items: list[dict]) -> list[dict]:
             enriched["short_title"] = entry.get("title", "")
             enriched["reason"] = entry.get("reason", "")
             enriched["tldr"] = entry.get("tldr", "")
+            enriched["tips"] = entry.get("tips", "")
             result.append(enriched)
 
     result.sort(

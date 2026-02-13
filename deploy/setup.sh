@@ -33,7 +33,6 @@ SECRETS=(
   DISCORD_CHANNEL_ID
   REDIS_URL
   GITHUB_TOKEN
-  GITHUB_DISCORD_CHANNEL_ID
 )
 for secret in "${SECRETS[@]}"; do
   gcloud secrets create "${secret}" \
@@ -64,9 +63,10 @@ MIN_ENGAGEMENT=3,\
 SCHEDULE_START_HOUR=9,\
 SCHEDULE_END_HOUR=20"
 
-# GITHUB_REPOS contains commas, so pass it separately to avoid
+# Values with commas must be passed separately to avoid
 # --set-env-vars parsing issues.
 GH_REPOS_FLAG="--update-env-vars=GITHUB_REPOS=anthropics/claude-code,openai/codex"
+X_ACCOUNTS_FLAG="--update-env-vars=X_ACCOUNTS=testingcatalog,ArtificialAnlys,rowancheung,_akhaliq,HuggingPapers,DotCSV,MatthewBerman,DrJimFan,emollick,karpathy,AndrewYNg,danshipper,omarsar0,real_deep_ml,OpenAI,AnthropicAI,GoogleDeepMind,NVIDIAAI,MistralAI,AIatMeta,DeepLearningAI,perplexity_ai,sama,GaryMarcus,lexfridman,Alibaba_Qwen,dwarkesh_sp,hardmaru,aureliengeron,TencentAI_News,OpenAIDevs"
 
 # botman-pipeline
 gcloud run jobs create botman-pipeline \
@@ -79,7 +79,8 @@ gcloud run jobs create botman-pipeline \
   --task-timeout=300s \
   ${SECRET_FLAGS} \
   ${ENV_FLAGS} \
-  ${GH_REPOS_FLAG}
+  ${GH_REPOS_FLAG} \
+  ${X_ACCOUNTS_FLAG}
 
 # botman-github
 gcloud run jobs create botman-github \
@@ -92,7 +93,8 @@ gcloud run jobs create botman-github \
   --task-timeout=300s \
   ${SECRET_FLAGS} \
   ${ENV_FLAGS} \
-  ${GH_REPOS_FLAG}
+  ${GH_REPOS_FLAG} \
+  ${X_ACCOUNTS_FLAG}
 
 # botman-cleanup
 gcloud run jobs create botman-cleanup \
@@ -105,7 +107,8 @@ gcloud run jobs create botman-cleanup \
   --task-timeout=120s \
   ${SECRET_FLAGS} \
   ${ENV_FLAGS} \
-  ${GH_REPOS_FLAG}
+  ${GH_REPOS_FLAG} \
+  ${X_ACCOUNTS_FLAG}
 
 echo "=== 6. Create service account ==="
 gcloud iam service-accounts create "${SA_NAME}" \
